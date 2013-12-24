@@ -5,7 +5,7 @@
 #   December 2013                     #
 #######################################
 
-""" String indexer """
+''' String indexer '''
 
 from Queue import Queue
 from threading import Thread
