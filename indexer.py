@@ -9,7 +9,8 @@
 
 from Queue import Queue
 from threading import Thread
-from dbapi import get_all_strings, set_dense_index
+from dbapi import get_all_strings, set_dense_index, set_inverted_index
+from miscutils import get_qgrams_from_string
 
 
 
@@ -45,7 +46,26 @@ def index_strings():
 def create_inverted_lists(strings, queue):
 
     def _create_inverted_lists(strings):
-        raise NotImplementedError('Well the error says it all!')
+        string_id = 0
+        inverted_index = dict()
+        for string in strings:
+            string_len = len(string)
+            try:
+                inverted_index_len = inverted_index[string_len]
+            except KeyError:
+                inverted_index[string_len] = dict()
+                inverted_index_len = inverted_index[string_len]
+
+            qgrams = get_qgrams_from_string(string, 2)
+            for qgram in qgrams:
+                try:
+                    inverted_index_len[qgram].add(string_id)
+                except KeyError:
+                    inverted_index_len[qgram] = set([string_id])
+
+            string_id += 1
+
+        set_inverted_index(inverted_index)
 
 
     result = (True, None)
@@ -78,3 +98,7 @@ def create_dense_index(strings, queue):
         result = (False, e)
 
     queue.put(result)
+
+
+if __name__ == '__main__':
+    index_strings()
