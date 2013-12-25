@@ -7,13 +7,11 @@
 
 ''' Approximate string matching '''
 
-ED_THRESHOLD = 2
-QGRAM_LEN = 2
-MATCHING_QGRAMS_PERCENTAGE = 0.75
+from config import QGRAM_LEN, ED_THRESHOLD, MATCHING_QGRAMS_PERCENTAGE
 
 from sys import argv
 from operator import itemgetter
-from dbapi import asme_is_in_operation, get_inverted_lists, get_strings
+from db_api import asme_is_in_operation, get_inverted_lists, get_strings
 from miscutils import get_qgrams_from_string
 
 
@@ -27,9 +25,9 @@ def find_approximate_strings(qstring):
     if not candidate_sids:
         return list()
 
-    candidate_strings = get_strings(candidate_sids)    
-    matching_strings = remove_false_positives(candidate_strings)    
-    
+    candidate_strings = get_strings(candidate_sids)
+    matching_strings = remove_false_positives(candidate_strings)
+
     return matching_strings
 
 
@@ -45,17 +43,17 @@ def get_candidate_string_ids(qstring):
         string_ids = solve_T_occurence_problem(length, qgrams)
         if string_ids:
             candidate_strings |= string_ids
-    
+
     return candidate_strings
-    
-    
+
+
 def solve_T_occurence_problem(length, qgrams):
     inverted_lists = get_inverted_lists(length, qgrams)
     if not inverted_lists:
         return set()
 
     inverted_lists = sorted(inverted_lists, key=itemgetter(1), reverse=True)
-        
+
     T = int(MATCHING_QGRAMS_PERCENTAGE * len(inverted_lists))
     string_ids = set(inverted_lists[0][0])
 
@@ -64,7 +62,7 @@ def solve_T_occurence_problem(length, qgrams):
         string_ids &= inverted_list
 
     return string_ids
-            
+
 def remove_false_positives(candidate_strings):
     return candidate_strings
 
@@ -73,4 +71,4 @@ if __name__ == '__main__':
     approximate_strings = find_approximate_strings(argv[1])
     for string in approximate_strings:
         print string
-        
+

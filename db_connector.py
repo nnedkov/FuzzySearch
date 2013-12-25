@@ -8,12 +8,12 @@
 ''' Database connector '''
 
 from pymongo import MongoClient
+from config import DB_HOST
 
 
 
 def connect_to_db():
-    connection_str = 'mongodb://localhost'
-    connection = MongoClient(connection_str)
+    connection = MongoClient(DB_HOST)
     return connection.asme
 
 

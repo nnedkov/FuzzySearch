@@ -30,4 +30,4 @@ if __name__ == '__main__':
         db.strings.insert(string_recs)
 
     if not_strings:
-        print 'Not stored data (due to its non-alphanumeric nature): %s' % not_strings
+        print 'Non-alphanumeric data (hence not stored): %s' % not_strings
