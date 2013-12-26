@@ -17,9 +17,9 @@ def get_strings_from_ext_source():
 
 if __name__ == '__main__':
     strings = get_strings_from_ext_source()
-
     string_recs = list()
     not_strings = list()
+
     for string in strings:
         if isinstance(string, str):
             string_recs.append({'string': string})

@@ -14,7 +14,9 @@ from config import DB_HOST
 
 def connect_to_db():
     connection = MongoClient(DB_HOST)
-    return connection.asme
+    db = connection.asme
+
+    return db
 
 
 db = connect_to_db()

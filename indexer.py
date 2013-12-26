@@ -18,7 +18,6 @@ from miscutils import get_qgrams_from_string
 
 def create_indexes():
     strings = get_all_strings()
-
     if not strings:
         raise Exception('No strings to index')
 
@@ -66,6 +65,7 @@ def create_inverted_lists(strings, queue):
 
     def _create_inverted_lists(strings):
         inverted_index = dict()
+
         for string_id, string in enumerate(strings):
             string_len = len(string)
             try:
@@ -75,12 +75,12 @@ def create_inverted_lists(strings, queue):
                 inverted_index_len = inverted_index[string_len]
 
             qgrams = get_qgrams_from_string(string, QGRAM_LEN)
+
             for qgram in qgrams:
                 try:
                     inverted_index_len[qgram].add(string_id)
                 except KeyError:
                     inverted_index_len[qgram] = set([string_id])
-
 
         set_inverted_index(inverted_index)
 
