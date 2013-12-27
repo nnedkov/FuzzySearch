@@ -8,5 +8,6 @@
 ''' Configuration variables '''
 
 DB_HOST = 'localhost'
-QGRAM_LEN = 2
+IS_SET = -1
+QGRAM_LENGTH = 2
 ED_THRESHOLD = 1

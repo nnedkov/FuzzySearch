@@ -7,8 +7,9 @@
 
 ''' Database connector '''
 
-from pymongo import MongoClient
 from config import DB_HOST
+
+from pymongo import MongoClient
 
 
 

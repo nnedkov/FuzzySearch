@@ -5,9 +5,9 @@
 #   December 2013                     #
 #######################################
 
-''' String indexer '''
+''' Indexing the source strings '''
 
-from config import QGRAM_LEN
+from config import QGRAM_LENGTH
 
 from Queue import Queue
 from threading import Thread
@@ -17,7 +17,7 @@ from miscutils import get_qgrams_from_string
 
 
 def create_indexes():
-    strings = get_all_strings()
+    strings = [string for string in get_all_strings() if len(string) > QGRAM_LENGTH+1]
     if not strings:
         raise Exception('No strings to index')
 
@@ -29,7 +29,7 @@ def create_indexes():
     queue = Queue()
 
     threads.append(Thread(target=create_dense_index, args=(strings, queue)))
-    threads.append(Thread(target=create_inverted_lists, args=(strings, queue)))
+    threads.append(Thread(target=create_inverted_index, args=(strings, queue)))
 
     for t in threads:
         t.start()
@@ -61,20 +61,21 @@ def create_dense_index(strings, queue):
     queue.put(result)
 
 
-def create_inverted_lists(strings, queue):
+def create_inverted_index(strings, queue):
 
-    def _create_inverted_lists(strings):
+    def _create_inverted_index(strings):
         inverted_index = dict()
 
         for string_id, string in enumerate(strings):
             string_len = len(string)
+
             try:
                 inverted_index_len = inverted_index[string_len]
             except KeyError:
                 inverted_index[string_len] = dict()
                 inverted_index_len = inverted_index[string_len]
 
-            qgrams = get_qgrams_from_string(string, QGRAM_LEN)
+            qgrams = get_qgrams_from_string(string, QGRAM_LENGTH)
 
             for qgram in qgrams:
                 try:
@@ -88,7 +89,7 @@ def create_inverted_lists(strings, queue):
     result = (True, None)
 
     try:
-        _create_inverted_lists(strings)
+        _create_inverted_index(strings)
     except Exception as e:
         result = (False, e)
 
