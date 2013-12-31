@@ -15,8 +15,8 @@ from sys import argv
 
 from db_api import asme_is_in_operation, get_inverted_lists, \
                    get_strings_by_ids, get_strings_by_lengths, get_all_strings
-from miscutils import get_qgrams_from_string
-
+from miscutils import get_qgrams_from_string, time_me, get_string_elements, \
+                      ed_property_is_satisfied, strings_are_within_distance_K
 
 
 def find_approximate_string_matches(qstring):
@@ -29,7 +29,13 @@ def find_approximate_string_matches(qstring):
         return list()
 
     candidate_strings = get_strings_by_ids(candidate_string_ids)
+
+    candidate_strings_elements = dict()
+    for string in candidate_strings:
+        candidate_strings_elements[string] = (get_string_elements(string), len(string))
+
     matching_strings = remove_false_positives(qstring, candidate_strings)
+    matching_strings = remove_false_positives(qstring, candidate_strings, candidate_strings_elements)
 
     return matching_strings
 
@@ -39,12 +45,12 @@ def get_candidate_string_ids(qstring):
     if not qgrams:
         return list()
 
-    qstring_length = len(qstring)
-    valid_lengths = range(qstring_length-ED_THRESHOLD, qstring_length+ED_THRESHOLD+1)
+    qlength = len(qstring)
+    valid_lengths = range(qlength-ED_THRESHOLD, qlength+ED_THRESHOLD+1)
     candidate_string_ids = list()
 
     for length in valid_lengths:
-        string_ids = solve_T_occurence_problem(length, qgrams, qstring_length)
+        string_ids = solve_T_occurence_problem(qlength, length, qgrams)
         if string_ids:
             candidate_string_ids += string_ids
 
@@ -53,7 +59,7 @@ def get_candidate_string_ids(qstring):
     return candidate_string_ids
 
 
-def solve_T_occurence_problem(length, qgrams, qstring_len):
+def solve_T_occurence_problem(qlength, length, qgrams):
     inverted_lists = get_inverted_lists(length, list(set(qgrams)))
     if not inverted_lists:
         return list()
@@ -63,9 +69,10 @@ def solve_T_occurence_problem(length, qgrams, qstring_len):
     for inverted_list, _ in inverted_lists:
         string_ids += inverted_list
 
-    duplicate_qgrams = len(qgrams)-len(set(qgrams))
-    valid_qgram_mismatches_num = QGRAM_LENGTH * ED_THRESHOLD
-    T = max(0, qstring_len - QGRAM_LENGTH + 1 - valid_qgram_mismatches_num - duplicate_qgrams)
+    qgrams_num = max(length, qlength) - QGRAM_LENGTH + 1
+    max_mismatches = QGRAM_LENGTH * ED_THRESHOLD
+    duplicates = len(qgrams) - len(set(qgrams))
+    T = max(0, qgrams_num - max_mismatches - duplicates)
 
     if T > 1:
         passing_string_ids = list()
@@ -79,20 +86,38 @@ def solve_T_occurence_problem(length, qgrams, qstring_len):
     return passing_string_ids
 
 
-def remove_false_positives(qstring, candidate_strings):
+@time_me
+def remove_false_positives(qstring, candidate_strings, candidate_string_elements=None):
+    qlength = len(qstring)
+
+    if candidate_string_elements and len(candidate_strings) > 15:
+        qelements = get_string_elements(qstring)
+        filtered_candidate_strings = list()
+
+        for string in candidate_strings:
+            elements, length = candidate_string_elements[string]
+            if ed_property_is_satisfied(qelements, elements, qlength == length):
+                filtered_candidate_strings.append(string)
+
+        #print 'Candidate strings before filtering: %s' % len(candidate_strings)
+        #print 'Candidate strings after filtering: %s' % len(filtered_candidate_strings)
+
+        candidate_strings = filtered_candidate_strings
+
     approximate_matches = list()
 
     for string in candidate_strings:
+        is_not_false_positive = strings_are_within_distance_K(qstring, string, qlength, len(string), ED_THRESHOLD+1)
 
-        if distance(unicode(qstring), unicode(string)) <= ED_THRESHOLD:
+        if is_not_false_positive:
             approximate_matches.append(string)
 
     return approximate_matches
 
 
 def verify_results(qstring, approximate_matches):
-    qstring_len = len(qstring)
-    valid_lengths = range(qstring_len-ED_THRESHOLD, qstring_len+ED_THRESHOLD+1)
+    qlength = len(qstring)
+    valid_lengths = range(qlength-ED_THRESHOLD, qlength+ED_THRESHOLD+1)
     candidate_strings = get_strings_by_lengths(valid_lengths)
     distance_cache = dict()
     verified_approximate_matches = list()
@@ -100,7 +125,7 @@ def verify_results(qstring, approximate_matches):
     for string in candidate_strings:
         edit_distance = distance(unicode(qstring), unicode(string))
         distance_cache[unicode(string)] = edit_distance
-        if edit_distance <= ED_THRESHOLD:
+        if edit_distance < ED_THRESHOLD + 1:
             verified_approximate_matches.append(string)
 
     missing_matches = [(unicode(i), distance_cache[unicode(i)]) for i in verified_approximate_matches if not i in approximate_matches]
@@ -112,7 +137,7 @@ def verify_results(qstring, approximate_matches):
 
 if __name__ == '__main__':
     if len(argv) == 1:
-        strings = get_all_strings()[669:]
+        strings = get_all_strings()
     else:
         strings = argv[1:]
 
