@@ -7,27 +7,30 @@
 
 ''' Import strings from external source '''
 
-from db_connector import db
+from db_api import set_strings
 
 
 
 def get_strings_from_ext_source():
-    raise NotImplementedError()
+    file_name = './vocab.nytimes.txt'
+    strings = [string.rstrip('\n') for string in open(file_name, 'r')]
+
+    return strings
 
 
 if __name__ == '__main__':
-    strings = get_strings_from_ext_source()
-    string_recs = list()
+    ext_strings = get_strings_from_ext_source()
+    strings = list()
     not_strings = list()
 
-    for string in strings:
+    for string in ext_strings:
         if isinstance(string, str):
-            string_recs.append({'string': string})
+            strings.append(string)
         else:
             not_strings.append(string)
 
-    if string_recs:
-        db.strings.insert(string_recs)
+    if strings:
+        set_strings(strings)
 
     if not_strings:
         print 'Non-alphanumeric data (hence not stored): %s' % not_strings

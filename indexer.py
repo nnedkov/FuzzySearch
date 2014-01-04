@@ -7,7 +7,7 @@
 
 ''' Indexing the source strings '''
 
-from config import QGRAM_LENGTH
+from config import QGRAM_LENGTH, DEBUG_MODE
 
 from Queue import Queue
 from threading import Thread
@@ -17,7 +17,8 @@ from miscutils import get_qgrams_from_string
 
 
 def create_indexes():
-    strings = [string for string in get_all_strings() if len(string) > QGRAM_LENGTH+1]
+    strings = [string for string in get_all_strings() \
+                                         if len(string) > QGRAM_LENGTH+1]
     if not strings:
         raise Exception('No strings to index')
 
@@ -49,6 +50,8 @@ def create_dense_index(strings, queue):
     def _create_dense_index(strings):
         dense_index = dict(enumerate(strings))
         set_dense_index(dense_index)
+        if DEBUG_MODE:
+            print 'Created dense index'
 
 
     result = (True, None)
@@ -84,6 +87,8 @@ def create_inverted_index(strings, queue):
                     inverted_index_len[qgram] = set([string_id])
 
         set_inverted_index(inverted_index)
+        if DEBUG_MODE:
+            print 'Created inverted index'
 
 
     result = (True, None)
