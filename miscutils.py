@@ -23,9 +23,11 @@ def get_qgrams_from_string(string, q):
 
 
 def get_string_elements(string):
+    string_signature = ''.join(sorted(list(string)))
     elements = dict()
 
-    for char, occurences in [(i, len(list(j))) for i, j in groupby(''.join(sorted(list(string))))]:
+    for char, occurences in [(i, len(list(j))) for i, j in \
+                                            groupby(string_signature)]:
         elements[char] = occurences
 
     return elements

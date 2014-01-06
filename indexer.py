@@ -12,13 +12,15 @@ from config import QGRAM_LENGTH, DEBUG_MODE
 from Queue import Queue
 from threading import Thread
 from db_api import get_all_strings, set_dense_index, set_inverted_index
-from miscutils import get_qgrams_from_string
+from miscutils import get_string_elements, get_qgrams_from_string
 
 
 
 def create_indexes():
     strings = [string for string in get_all_strings() \
-                                         if len(string) > QGRAM_LENGTH+1]
+                                         if len(string) > QGRAM_LENGTH+1 and \
+                                         string.find('.') == -1 and \
+                                         string.find('$') == -1]
     if not strings:
         raise Exception('No strings to index')
 
@@ -48,7 +50,12 @@ def create_indexes():
 def create_dense_index(strings, queue):
 
     def _create_dense_index(strings):
-        dense_index = dict(enumerate(strings))
+        dense_index = dict()
+
+        for i, string in enumerate(strings):
+            string_elements = get_string_elements(string)
+            dense_index[i] = (string, string_elements, len(string))
+
         set_dense_index(dense_index)
         if DEBUG_MODE:
             print 'Created dense index'
