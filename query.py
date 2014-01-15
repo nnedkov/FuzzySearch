@@ -7,16 +7,19 @@
 
 ''' Querying for approximate string matches '''
 
-from config import QGRAM_LENGTH, ED_THRESHOLD
+from config import QGRAM_LENGTH, ED_THRESHOLD, DEBUG_MODE
 
 from itertools import groupby
+from time import time
 from Levenshtein import distance
 from sys import argv
 
 from db_api import asme_is_in_operation, get_inverted_lists, \
-                   get_strings_by_ids, get_strings_by_lengths, get_all_strings
-from miscutils import get_qgrams_from_string, time_me, get_string_elements, \
+                   get_string_attrs_by_ids, get_strings_by_lengths, \
+                   get_all_strings
+from miscutils import get_qgrams_from_string, get_string_elements, \
                       ed_property_is_satisfied, strings_are_within_distance_K
+
 
 
 def find_approximate_string_matches(qstring):
@@ -28,16 +31,15 @@ def find_approximate_string_matches(qstring):
     if not candidate_string_ids:
         return list()
 
-    candidate_strings = get_strings_by_ids(candidate_string_ids)
+    candidate_string_attrs = get_string_attrs_by_ids(candidate_string_ids)
+    candidate_strings = candidate_string_attrs.keys()
 
-    candidate_strings_elements = dict()
-    for string in candidate_strings:
-        candidate_strings_elements[string] = (get_string_elements(string), len(string))
+    matching_strings_wof, twof = remove_false_positives(qstring, candidate_strings)
+    matching_strings_wf, twf = remove_false_positives(qstring, candidate_strings, candidate_string_attrs)
 
-    matching_strings = remove_false_positives(qstring, candidate_strings)
-    matching_strings = remove_false_positives(qstring, candidate_strings, candidate_strings_elements)
+    assert matching_strings_wof == matching_strings_wf
 
-    return matching_strings
+    return matching_strings_wf, twof, twf
 
 
 def get_candidate_string_ids(qstring):
@@ -86,33 +88,39 @@ def solve_T_occurence_problem(qlength, length, qgrams):
     return passing_string_ids
 
 
-@time_me
-def remove_false_positives(qstring, candidate_strings, candidate_string_elements=None):
+CAND_STRINGS_THRESHOLD = 0
+
+def remove_false_positives(qstring, candidate_strings, candidate_string_attrs=None):
+    start_time = int(round(time() * 1000000))
+
     qlength = len(qstring)
 
-    if candidate_string_elements and len(candidate_strings) > 15:
+    if candidate_string_attrs and len(candidate_strings) > CAND_STRINGS_THRESHOLD:
         qelements = get_string_elements(qstring)
         filtered_candidate_strings = list()
 
         for string in candidate_strings:
-            elements, length = candidate_string_elements[string]
+            elements, length = candidate_string_attrs[string]
             if ed_property_is_satisfied(qelements, elements, qlength == length):
                 filtered_candidate_strings.append(string)
 
-        #print 'Candidate strings before filtering: %s' % len(candidate_strings)
-        #print 'Candidate strings after filtering: %s' % len(filtered_candidate_strings)
+        #print '# of candidate strings before filtering: %s' % len(candidate_strings)
+        #print '# of candidate strings after filtering: %s' % len(filtered_candidate_strings)
 
         candidate_strings = filtered_candidate_strings
 
     approximate_matches = list()
 
     for string in candidate_strings:
-        is_not_false_positive = strings_are_within_distance_K(qstring, string, qlength, len(string), ED_THRESHOLD+1)
+        length = len(string)
+        is_not_false_positive = strings_are_within_distance_K(qstring, string, qlength, length, K=ED_THRESHOLD+1)
 
         if is_not_false_positive:
             approximate_matches.append(string)
 
-    return approximate_matches
+    end_time = int(round(time() * 1000000))
+
+    return approximate_matches, end_time - start_time
 
 
 def verify_results(qstring, approximate_matches):
@@ -128,7 +136,7 @@ def verify_results(qstring, approximate_matches):
         if edit_distance < ED_THRESHOLD + 1:
             verified_approximate_matches.append(string)
 
-    missing_matches = [(unicode(i), distance_cache[unicode(i)]) for i in verified_approximate_matches if not i in approximate_matches]
+    missing_matches = [(unicode(i), distance_cache[unicode(i)]) for i in verified_approximate_matches if i not in approximate_matches]
     missed_matches = [(unicode(i), distance_cache[unicode(i)]) for i in approximate_matches if i not in verified_approximate_matches]
 
     assert not missing_matches, 'Missing matches for %s: %s' % (qstring, missing_matches)
@@ -137,24 +145,50 @@ def verify_results(qstring, approximate_matches):
 
 if __name__ == '__main__':
     if len(argv) == 1:
-        strings = get_all_strings()
+        strings = get_all_strings()[139654:141000]
     else:
         strings = argv[1:]
 
     strings_num = len(strings)
 
-    for i, query_string in enumerate(strings):
-        try:
-            unicode(query_string)
-        except UnicodeDecodeError:
-            print '%s/%s: %s (skip because of encoding issues)' % (i+1, strings_num, query_string)
-            continue
+# **********   EVALUATION   ********** #
 
-        if len(query_string) <= QGRAM_LENGTH + 1:
-            print '%s/%s: %s (skip because of its small length)' % (i+1, strings_num, query_string)
-            continue
+    cand_strings_threshold_evaluation = dict()
 
-        print '%s/%s: %s' % (i+1, strings_num, query_string)
+    for cand_strings_threshold in [5, 15, 25, 35, 45, 55]:
+        CAND_STRINGS_THRESHOLD = cand_strings_threshold
+        cand_strings_threshold_evaluation[cand_strings_threshold] = dict()
 
-        approximate_matches = find_approximate_string_matches(query_string)
-        verify_results(query_string, approximate_matches)
+        for i, query_string in enumerate(strings):
+            try:
+                unicode(query_string)
+            except UnicodeDecodeError:
+                print '%s/%s: %s (skip because of encoding issues)' % (i+1, strings_num, query_string)
+                continue
+
+            if len(query_string) <= QGRAM_LENGTH + 1:
+                print '%s/%s: %s (skip because of its small length)' % (i+1, strings_num, query_string)
+                continue
+
+            print '%s/%s: %s' % (i+1, strings_num, query_string)
+
+            approximate_matches, twof, twf = find_approximate_string_matches(query_string)
+            print approximate_matches
+            qlength = len(query_string)
+            try:
+                cand_strings_threshold_evaluation[cand_strings_threshold][qlength][0] += 1
+                cand_strings_threshold_evaluation[cand_strings_threshold][qlength][1] += twof
+                cand_strings_threshold_evaluation[cand_strings_threshold][qlength][2] += twf
+            except KeyError:
+                cand_strings_threshold_evaluation[cand_strings_threshold][qlength] = [1, twof, twf]
+
+            if DEBUG_MODE:
+                verify_results(query_string, approximate_matches)
+
+    for cand_strings_threshold, evaluation in cand_strings_threshold_evaluation.iteritems():
+        print '\n\nCANDIDATE STRINGS THRESHOLD: %s\n' % cand_strings_threshold
+
+        for qlength, attr in evaluation.iteritems():
+            print 'Qstring length: %s - Count: %s - Average time without filtering: %s - Average time with filtering: %s' % (qlength, attr[0], attr[1]/attr[0], attr[2]/attr[0])
+
+# **********   EVALUATION   ********** #

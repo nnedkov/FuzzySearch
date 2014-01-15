@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #######################################
-#   Filename: asme.sh                 #
+#   Filename: pre-commit.sh           #
 #   Nedko Stefanov Nedkov             #
 #   nedko.stefanov.nedkov@gmail.com   #
 #   December 2013		      #
@@ -42,7 +42,7 @@ if (( $# > 0 )); then
     		2)   ((FLAGS[1]=1));;
    		3)   ((FLAGS[2]=1));;
 
-	       ### WHEN ADDING NEW FUNCTIONALITY TOUCH HERE ###
+	        ### WHEN ADDING NEW FUNCTIONALITY TOUCH HERE ###
    		esac
 	done
 fi
@@ -98,4 +98,6 @@ fi
 if (( FLAGS[2] == 1 )); then
 	check_modified_files
 fi
+
+### WHEN ADDING NEW FUNCTIONALITY TOUCH HERE ###
 

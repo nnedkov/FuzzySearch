@@ -9,7 +9,10 @@
 
 from config import IS_SET
 
-import pymongo
+from pymongo import errors, ASCENDING
+from sys import exc_info
+from time import sleep
+
 from db_connector import db
 
 
@@ -20,11 +23,7 @@ def get_all_strings():
     query = {}
     projection = {'string': 1, '_id': 0}
 
-    try:
-        cursor = db.strings.find(query, projection)
-    except:
-        raise NotImplementedError
-
+    cursor = db.strings.find(query, projection)
     strings = [rec['string'] for rec in cursor]
 
     return strings
@@ -35,10 +34,15 @@ def get_all_strings():
 def set_strings(strings):
     string_recs = [{'string': string} for string in strings]
 
-    try:
-        db.strings.insert(string_recs)
-    except:
-        raise NotImplementedError
+    # Handling network failover
+    for retries in range(0, 3):
+        try:
+            db.strings.insert(string_recs)
+        except errors.DuplicateKeyError:
+            break
+        except:
+            print exc_info()[0]
+            sleep(5)
 
 
 # **********   Getters for collection 'dense_index'   ********** #
@@ -46,38 +50,26 @@ def set_strings(strings):
 def dense_index_is_set():
     query = {'_id': IS_SET}
 
-    try:
-        is_set = bool(db.dense_index.find(query).count())
-    except:
-        raise NotImplementedError
+    is_set = bool(db.dense_index.find(query).count())
 
     return is_set
 
 
-def get_strings_and_attrs_by_ids(sids):
+def get_string_attrs_by_ids(sids):
     query = {'_id': {'$in': sids}}
     projection = {'string': 1, 'elements': 1, 'length': 1, '_id': 0}
 
-    try:
-        cursor = db.dense_index.find(query, projection)
-    except:
-        raise NotImplementedError
-
-    strings = dict((rec['string'], (rec['elements'], rec['length'])) \
+    cursor = db.dense_index.find(query, projection)
+    string_attrs = dict((rec['string'], (rec['elements'], rec['length'])) \
                                                             for rec in cursor)
-
-    return strings
+    return string_attrs
 
 
 def get_strings_by_lengths(lengths):
     query = {'length': {'$in': lengths}}
     projection = {'string': 1, '_id': 0}
 
-    try:
-        cursor = db.dense_index.find(query, projection)
-    except:
-        NotImplementedError
-
+    cursor = db.dense_index.find(query, projection)
     strings = [rec['string'] for rec in cursor]
 
     return strings
@@ -97,12 +89,17 @@ def set_dense_index(dense_index):
 
     dense_index_recs.append({'_id': IS_SET})
 
-    try:
-        db.dense_index.drop()
-        db.dense_index.insert(dense_index_recs)
-        db.dense_index.ensure_index('length', pymongo.ASCENDING)
-    except:
-        raise NotImplementedError
+    # Handling network failover
+    for retries in range(0, 3):
+        try:
+            db.dense_index.drop()
+            db.dense_index.insert(dense_index_recs)
+            db.dense_index.ensure_index('length', ASCENDING)
+        except errors.DuplicateKeyError:
+            break
+        except:
+            print exc_info()[0]
+            sleep(5)
 
 
 # **********   Getters for collection 'inverted_index'   ********** #
@@ -110,10 +107,7 @@ def set_dense_index(dense_index):
 def inverted_index_is_set():
     query = {'_id': IS_SET}
 
-    try:
-        is_set = bool(db.inverted_index.find(query).count())
-    except:
-        raise NotImplementedError
+    is_set = bool(db.inverted_index.find(query).count())
 
     return is_set
 
@@ -122,11 +116,7 @@ def get_inverted_lists(length, qgrams):
     query = {'length': length, 'qgram': {'$in': qgrams}}
     projection = {'sids': 1, 'cardinality': 1, '_id': 0}
 
-    try:
-        cursor = db.inverted_index.find(query, projection)
-    except:
-        raise NotImplementedError
-
+    cursor = db.inverted_index.find(query, projection)
     inverted_lists = [(rec['sids'], rec['cardinality']) for rec in cursor]
 
     return inverted_lists
@@ -135,7 +125,7 @@ def get_inverted_lists(length, qgrams):
 # **********   Setters for collection 'inverted_index'   ********** #
 
 def set_inverted_index(inverted_index):
-    coll_index = [('length', pymongo.ASCENDING), ('qgram', pymongo.ASCENDING)]
+    coll_index = [('length', ASCENDING), ('qgram', ASCENDING)]
     inverted_index_recs = list()
 
     for length, inverted_index_len in inverted_index.iteritems():
@@ -147,12 +137,17 @@ def set_inverted_index(inverted_index):
 
     inverted_index_recs.append({'_id': IS_SET})
 
-    try:
-        db.inverted_index.drop()
-        db.inverted_index.ensure_index(coll_index)
-        db.inverted_index.insert(inverted_index_recs)
-    except:
-        raise NotImplementedError
+    # Handling network failover
+    for retries in range(0, 3):
+        try:
+            db.inverted_index.drop()
+            db.inverted_index.ensure_index(coll_index)
+            db.inverted_index.insert(inverted_index_recs)
+        except errors.DuplicateKeyError:
+            break
+        except:
+            print exc_info()[0]
+            sleep(5)
 
 
 # **********   Etc   ********** #
