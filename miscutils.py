@@ -67,7 +67,7 @@ def ed_property_is_satisfied(qelements, elements, have_same_length):
     return True
 
 
-def strings_are_within_distance_K(qstring, string, qlength, length, K):
+def strings_are_within_distance_K(qstring, string, qlength, length, K=1):
     matrix = [[0 if abs(i-j) < K else K for i in xrange(qlength+1)] for j in xrange(length+1)]
     matrix[0] = range(qlength+1)
     for i in xrange(1, length+1):
