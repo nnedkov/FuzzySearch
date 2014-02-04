@@ -22,6 +22,19 @@ def get_qgrams_from_string(string, q):
     return qgrams
 
 
+def get_pos_qgrams_from_string(string, q):
+    pos_qgrams = dict()
+
+    for i in range(len(string)+1-q):
+        qgram = string[i:i+q]
+        try:
+            pos_qgrams[qgram].append(i)
+        except KeyError:
+            pos_qgrams[qgram] = [i]
+
+    return pos_qgrams
+
+
 def get_string_elements(string):
     string_signature = ''.join(sorted(list(string)))
     elements = dict()

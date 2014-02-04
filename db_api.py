@@ -57,10 +57,10 @@ def dense_index_is_set():
 
 def get_string_attrs_by_ids(sids):
     query = {'_id': {'$in': sids}}
-    projection = {'string': 1, 'elements': 1, 'length': 1, '_id': 0}
+    projection = {'string': 1, 'elements': 1, 'length': 1, 'pos_qgrams': 1, '_id': 0}
 
     cursor = db.dense_index.find(query, projection)
-    string_attrs = dict((rec['string'], (rec['elements'], rec['length'])) \
+    string_attrs = dict((rec['string'], (rec['elements'], rec['length'], rec['pos_qgrams'])) \
                                                             for rec in cursor)
     return string_attrs
 
@@ -84,7 +84,8 @@ def set_dense_index(dense_index):
         string_rec = {'_id': sid,
                       'string': string_attr[0],
                       'elements': string_attr[1],
-                      'length': string_attr[2]}
+                      'length': string_attr[2],
+                      'pos_qgrams': string_attr[3]}
         dense_index_recs.append(string_rec)
 
     dense_index_recs.append({'_id': IS_SET})

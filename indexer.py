@@ -13,7 +13,8 @@ from Queue import Queue
 from threading import Thread
 
 from db_api import get_all_strings, set_dense_index, set_inverted_index
-from miscutils import get_string_elements, get_qgrams_from_string
+from miscutils import get_string_elements, get_qgrams_from_string, \
+                      get_pos_qgrams_from_string
 
 
 
@@ -55,7 +56,8 @@ def create_dense_index(strings, queue):
 
         for i, string in enumerate(strings):
             string_elements = get_string_elements(string)
-            dense_index[i] = (string, string_elements, len(string))
+            pos_qgrams = get_pos_qgrams_from_string(string, QGRAM_LENGTH)
+            dense_index[i] = (string, string_elements, len(string), pos_qgrams)
 
         set_dense_index(dense_index)
         if VERBOSITY:

@@ -18,7 +18,8 @@ from db_api import asme_is_in_operation, get_inverted_lists, \
                    get_string_attrs_by_ids, get_strings_by_lengths, \
                    get_all_strings
 from miscutils import get_qgrams_from_string, get_string_elements, \
-                      ed_property_is_satisfied, strings_are_within_distance_K
+                      ed_property_is_satisfied, get_pos_qgrams_from_string, \
+                      strings_are_within_distance_K
 
 
 
@@ -34,12 +35,30 @@ def find_approximate_string_matches(qstring):
     candidate_string_attrs = get_string_attrs_by_ids(candidate_string_ids)
     candidate_strings = candidate_string_attrs.keys()
 
-    matching_strings_wof, twof = remove_false_positives(qstring, candidate_strings)
-    matching_strings_wf, twf = remove_false_positives(qstring, candidate_strings, candidate_string_attrs)
+    start_time = int(round(time() * 1000000))
+    filtered_candidate_strings1 = my_filter(qstring, candidate_strings, candidate_string_attrs)
+    matching_strings1 = remove_false_positives(qstring, filtered_candidate_strings1)
+    end_time = int(round(time() * 1000000))
+    my_filter_time = end_time - start_time
+    # verify_results(qstring, matching_strings1)
 
-    assert matching_strings_wof == matching_strings_wf
+    start_time = int(round(time() * 1000000))
+    filtered_candidate_strings2 = position_filter(qstring, candidate_strings, candidate_string_attrs)
+    matching_strings2 = remove_false_positives(qstring, filtered_candidate_strings2)
+    end_time = int(round(time() * 1000000))
+    position_filter_time = end_time - start_time
+    verify_results(qstring, matching_strings2)
 
-    return matching_strings_wf, twof, twf
+    start_time = int(round(time() * 1000000))
+    matching_strings3 = remove_false_positives(qstring, candidate_strings)
+    end_time = int(round(time() * 1000000))
+    no_filter_time = end_time - start_time
+    # verify_results(qstring, matching_strings3)
+
+    #assert matching_strings1 == matching_strings2, [len(matching_strings1), len(matching_strings2)]
+    assert matching_strings1 == matching_strings3
+
+    return matching_strings1, my_filter_time, position_filter_time, no_filter_time
 
 
 def get_candidate_string_ids(qstring):
@@ -71,10 +90,11 @@ def solve_T_occurence_problem(qlength, length, qgrams):
     for inverted_list, _ in inverted_lists:
         string_ids += inverted_list
 
-    qgrams_num = max(length, qlength) - QGRAM_LENGTH + 1
+    # qgrams_num = max(length, qlength) - QGRAM_LENGTH + 1
+    qgrams_num = qlength - QGRAM_LENGTH + 1
     max_mismatches = QGRAM_LENGTH * ED_THRESHOLD
     duplicates = len(qgrams) - len(set(qgrams))
-    T = max(0, qgrams_num - max_mismatches - duplicates)
+    T = max(0, qgrams_num - duplicates - max_mismatches)
 
     if T > 1:
         passing_string_ids = list()
@@ -90,25 +110,74 @@ def solve_T_occurence_problem(qlength, length, qgrams):
 
 CAND_STRINGS_THRESHOLD = 0
 
-def remove_false_positives(qstring, candidate_strings, candidate_string_attrs=None):
-    start_time = int(round(time() * 1000000))
 
-    qlength = len(qstring)
+def my_filter(qstring, candidate_strings, candidate_string_attrs):
+    filtered_candidate_strings = candidate_strings
 
-    if candidate_string_attrs and len(candidate_strings) > CAND_STRINGS_THRESHOLD:
+    if len(candidate_strings) > CAND_STRINGS_THRESHOLD:
         qelements = get_string_elements(qstring)
+        qlength = len(qstring)
         filtered_candidate_strings = list()
 
         for string in candidate_strings:
-            elements, length = candidate_string_attrs[string]
+            elements, length, _ = candidate_string_attrs[string]
             if ed_property_is_satisfied(qelements, elements, qlength == length):
                 filtered_candidate_strings.append(string)
 
-        #print '# of candidate strings before filtering: %s' % len(candidate_strings)
-        #print '# of candidate strings after filtering: %s' % len(filtered_candidate_strings)
+        print '(my_filter) # of candidate strings before filtering: %s' % len(candidate_strings)
+        print '(my_filter) # of candidate strings after filtering: %s' % len(filtered_candidate_strings)
 
-        candidate_strings = filtered_candidate_strings
+    return filtered_candidate_strings
 
+
+def position_filter(qstring, candidate_strings, candidate_string_attrs):
+    filtered_candidate_strings = candidate_strings
+
+    if len(candidate_strings) > CAND_STRINGS_THRESHOLD:
+        query_pos_qgrams = get_pos_qgrams_from_string(qstring, QGRAM_LENGTH)
+        filtered_candidate_strings = list()
+
+        for string in candidate_strings:
+            _, _, pos_qgrams = candidate_string_attrs[string]
+            pos_qgram_matches_numb = 0
+            T = max(len(qstring), len(string)) - QGRAM_LENGTH*ED_THRESHOLD - 1
+            will_be_pruned = True
+
+            for qgram, query_positions in query_pos_qgrams.iteritems():
+                assert query_positions == sorted(query_positions)
+                try:
+                    positions = list(pos_qgrams[qgram])
+                except KeyError:
+                    continue
+
+                assert positions == sorted(positions)
+
+                for qpos in query_positions:
+
+                    for pos in positions:
+                        if abs(qpos-pos) <= ED_THRESHOLD:
+                            positions.remove(pos)
+                            pos_qgram_matches_numb += 1
+                            break
+
+                    if pos_qgram_matches_numb == T:
+                        will_be_pruned = False
+                        break
+
+                if not will_be_pruned:
+                    break
+
+            if not will_be_pruned:
+                filtered_candidate_strings.append(string)
+
+        print '(pos_filter) # of candidate strings before filtering: %s' % len(candidate_strings)
+        print '(pos_filter) # of candidate strings after filtering: %s' % len(filtered_candidate_strings)
+
+    return filtered_candidate_strings
+
+
+def remove_false_positives(qstring, candidate_strings):
+    qlength = len(qstring)
     approximate_matches = list()
 
     for string in candidate_strings:
@@ -118,9 +187,7 @@ def remove_false_positives(qstring, candidate_strings, candidate_string_attrs=No
         if is_not_false_positive:
             approximate_matches.append(string)
 
-    end_time = int(round(time() * 1000000))
-
-    return approximate_matches, end_time - start_time
+    return approximate_matches
 
 
 def verify_results(qstring, approximate_matches):
@@ -170,17 +237,27 @@ if __name__ == '__main__':
                 print '%s/%s: %s (skip because of its small length)' % (i+1, strings_num, query_string)
                 continue
 
+            qlength = len(query_string)
+            qgrams = get_qgrams_from_string(query_string, QGRAM_LENGTH)
+            qgrams_num = qlength - QGRAM_LENGTH + 1
+            max_mismatches = QGRAM_LENGTH * ED_THRESHOLD
+            duplicates = len(qgrams) - len(set(qgrams))
+            T = max(0, qgrams_num - duplicates - max_mismatches)
+            if T == 0:
+                continue
+
             print '%s/%s: %s' % (i+1, strings_num, query_string)
 
-            approximate_matches, twof, twf = find_approximate_string_matches(query_string)
-            print approximate_matches
+            approximate_matches, my_filter_time, position_filter_time, no_filter_time = find_approximate_string_matches(query_string)
+            # print approximate_matches
             qlength = len(query_string)
             try:
                 cand_strings_threshold_evaluation[cand_strings_threshold][qlength][0] += 1
-                cand_strings_threshold_evaluation[cand_strings_threshold][qlength][1] += twof
-                cand_strings_threshold_evaluation[cand_strings_threshold][qlength][2] += twf
+                cand_strings_threshold_evaluation[cand_strings_threshold][qlength][1] += my_filter_time
+                cand_strings_threshold_evaluation[cand_strings_threshold][qlength][2] += position_filter_time
+                cand_strings_threshold_evaluation[cand_strings_threshold][qlength][3] += no_filter_time
             except KeyError:
-                cand_strings_threshold_evaluation[cand_strings_threshold][qlength] = [1, twof, twf]
+                cand_strings_threshold_evaluation[cand_strings_threshold][qlength] = [1, my_filter_time, position_filter_time, no_filter_time]
 
             if DEBUG_MODE:
                 verify_results(query_string, approximate_matches)
@@ -189,6 +266,6 @@ if __name__ == '__main__':
         print '\n\nCANDIDATE STRINGS THRESHOLD: %s\n' % cand_strings_threshold
 
         for qlength, attr in evaluation.iteritems():
-            print 'Qstring length: %s - Count: %s - Average time without filtering: %s - Average time with filtering: %s' % (qlength, attr[0], attr[1]/attr[0], attr[2]/attr[0])
+            print 'Qstring length: %s - Count: %s - Average time with my filter: %s - Average time with pos filter: %s - Average time without filter: %s' % (qlength, attr[0], attr[1]/attr[0], attr[2]/attr[0], attr[3]/attr[0])
 
 # **********   EVALUATION   ********** #
