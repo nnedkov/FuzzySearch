@@ -7,7 +7,7 @@
 
 ''' Indexing the source strings '''
 
-from config import QGRAM_LENGTH, VERBOSITY
+from config import QGRAM_LENGTH, VERBOSITY, ED_THRESHOLD
 
 from Queue import Queue
 from threading import Thread
@@ -23,6 +23,18 @@ def create_indexes():
                                          if len(string) > QGRAM_LENGTH + 1 and \
                                             string.find('.') == -1 and \
                                             string.find('$') == -1]
+    clean_strings = list()
+    valid_lengths = range(6-ED_THRESHOLD, 12+ED_THRESHOLD)
+
+    for string in strings:
+        if len(string) not in valid_lengths:
+            continue
+        if string[-1] == ',':
+            string = string[:-1]
+        clean_strings.append(string)
+
+    strings = clean_strings
+
     if not strings:
         raise Exception('No strings to index')
 

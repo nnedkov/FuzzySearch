@@ -35,30 +35,34 @@ def find_approximate_string_matches(qstring):
     candidate_string_attrs = get_string_attrs_by_ids(candidate_string_ids)
     candidate_strings = candidate_string_attrs.keys()
 
+    evaluation = dict()
+    evaluation['initial_candidates_num'] = len(candidate_strings)
+
     start_time = int(round(time() * 1000000))
-    filtered_candidate_strings1 = my_filter(qstring, candidate_strings, candidate_string_attrs)
-    matching_strings1 = remove_false_positives(qstring, filtered_candidate_strings1)
-    end_time = int(round(time() * 1000000))
-    my_filter_time = end_time - start_time
+    filtered_candidate_strings = my_filter(qstring, candidate_strings, candidate_string_attrs)
+    filter_time = int(round(time() * 1000000))
+    matching_strings1 = remove_false_positives(qstring, filtered_candidate_strings)
+    total_time = int(round(time() * 1000000))
+    evaluation['my_filter_time'] = filter_time - start_time
+    evaluation['my_filter_total_time'] = total_time - start_time
+    evaluation['my_filter_pruned'] = len(candidate_strings) - len(filtered_candidate_strings)
     # verify_results(qstring, matching_strings1)
 
     start_time = int(round(time() * 1000000))
-    filtered_candidate_strings2 = position_filter(qstring, candidate_strings, candidate_string_attrs)
-    matching_strings2 = remove_false_positives(qstring, filtered_candidate_strings2)
-    end_time = int(round(time() * 1000000))
-    position_filter_time = end_time - start_time
-    verify_results(qstring, matching_strings2)
+    filtered_candidate_strings = position_filter(qstring, candidate_strings, candidate_string_attrs)
+    filter_time = int(round(time() * 1000000))
+    matching_strings2 = remove_false_positives(qstring, filtered_candidate_strings)
+    total_time = int(round(time() * 1000000))
+    evaluation['position_filter_time'] = filter_time - start_time
+    evaluation['position_filter_total_time'] = total_time - start_time
+    evaluation['position_filter_pruned'] = len(candidate_strings) - len(filtered_candidate_strings)
+    # verify_results(qstring, matching_strings2)
 
-    start_time = int(round(time() * 1000000))
-    matching_strings3 = remove_false_positives(qstring, candidate_strings)
-    end_time = int(round(time() * 1000000))
-    no_filter_time = end_time - start_time
-    # verify_results(qstring, matching_strings3)
+    assert matching_strings1 == matching_strings2
 
-    #assert matching_strings1 == matching_strings2, [len(matching_strings1), len(matching_strings2)]
-    assert matching_strings1 == matching_strings3
+    # evaluation['approximate_matches'] = matching_strings1
 
-    return matching_strings1, my_filter_time, position_filter_time, no_filter_time
+    return evaluation
 
 
 def get_candidate_string_ids(qstring):
@@ -90,11 +94,7 @@ def solve_T_occurence_problem(qlength, length, qgrams):
     for inverted_list, _ in inverted_lists:
         string_ids += inverted_list
 
-    # qgrams_num = max(length, qlength) - QGRAM_LENGTH + 1
-    qgrams_num = qlength - QGRAM_LENGTH + 1
-    max_mismatches = QGRAM_LENGTH * ED_THRESHOLD
-    duplicates = len(qgrams) - len(set(qgrams))
-    T = max(0, qgrams_num - duplicates - max_mismatches)
+    T = get_min_matching_qgram_num(query_string, qlength, qgrams)
 
     if T > 1:
         passing_string_ids = list()
@@ -110,6 +110,19 @@ def solve_T_occurence_problem(qlength, length, qgrams):
 
 CAND_STRINGS_THRESHOLD = 0
 
+
+def get_min_matching_qgram_num(query_string, qlength=None, qgrams=None):
+    if qlength is None:
+        qlength = len(query_string)
+    if qgrams is None:
+        qgrams = get_qgrams_from_string(query_string, QGRAM_LENGTH)
+
+    qgrams_num = qlength - QGRAM_LENGTH + 1   # or max(length, qlength) - QGRAM_LENGTH + 1
+    max_mismatches = QGRAM_LENGTH * ED_THRESHOLD
+    duplicates = len(qgrams) - len(set(qgrams))
+    T = max(0, qgrams_num - duplicates - max_mismatches)
+
+    return T
 
 def my_filter(qstring, candidate_strings, candidate_string_attrs):
     filtered_candidate_strings = candidate_strings
@@ -211,61 +224,82 @@ def verify_results(qstring, approximate_matches):
 
 
 if __name__ == '__main__':
-    if len(argv) == 1:
-        strings = get_all_strings()[139654:141000]
-    else:
-        strings = argv[1:]
-
-    strings_num = len(strings)
+#    if len(argv) == 1:
+#        strings = get_strings_by_lengths([6])[:500]
+#        strings += get_strings_by_lengths([7])[:500]
+#        strings += get_strings_by_lengths([8])[:500]
+#        strings += get_strings_by_lengths([9])[:500]
+#        strings += get_strings_by_lengths([10])[:500]
+#        strings += get_strings_by_lengths([11])[:500]
+#        # strings = get_all_strings()[139654:141000]
+#    else:
+#        strings = argv[1:]
+#
+#    strings_num = len(strings)
 
 # **********   EVALUATION   ********** #
+    SAMPLE_SIZE = 100
 
-    cand_strings_threshold_evaluation = dict()
+    for CAND_STRINGS_THRESHOLD in [25, 35, 45, 55, 5, 15]:
 
-    for cand_strings_threshold in [5, 15, 25, 35, 45, 55]:
-        CAND_STRINGS_THRESHOLD = cand_strings_threshold
-        cand_strings_threshold_evaluation[cand_strings_threshold] = dict()
+        for qlength in [6, 7, 8, 9, 10]:
+            strings = get_strings_by_lengths([qlength])
+            evaluation = [0] * 7
+            current_sample = 0
 
-        for i, query_string in enumerate(strings):
-            try:
-                unicode(query_string)
-            except UnicodeDecodeError:
-                print '%s/%s: %s (skip because of encoding issues)' % (i+1, strings_num, query_string)
-                continue
+            for query_string in strings:
+                try:
+                    unicode(query_string)
+                except UnicodeDecodeError:
+                    print '%s/%s: %s (skip because of encoding issues)' % (current_sample, SAMPLE_SIZE, query_string)
+                    continue
 
-            if len(query_string) <= QGRAM_LENGTH + 1:
-                print '%s/%s: %s (skip because of its small length)' % (i+1, strings_num, query_string)
-                continue
+                if len(query_string) <= QGRAM_LENGTH + 1:
+                    print '%s/%s: %s (skip because of its small length)' % (current_sample, SAMPLE_SIZE, query_string)
+                    continue
 
-            qlength = len(query_string)
-            qgrams = get_qgrams_from_string(query_string, QGRAM_LENGTH)
-            qgrams_num = qlength - QGRAM_LENGTH + 1
-            max_mismatches = QGRAM_LENGTH * ED_THRESHOLD
-            duplicates = len(qgrams) - len(set(qgrams))
-            T = max(0, qgrams_num - duplicates - max_mismatches)
-            if T == 0:
-                continue
+                if get_min_matching_qgram_num(query_string, qlength) == 0:
+                    print '%s/%s: %s (skip because T is 0)' % (current_sample, SAMPLE_SIZE, query_string)
+                    continue
 
-            print '%s/%s: %s' % (i+1, strings_num, query_string)
+                print '%s/%s: %s' % (current_sample, SAMPLE_SIZE, query_string)
 
-            approximate_matches, my_filter_time, position_filter_time, no_filter_time = find_approximate_string_matches(query_string)
-            # print approximate_matches
-            qlength = len(query_string)
-            try:
-                cand_strings_threshold_evaluation[cand_strings_threshold][qlength][0] += 1
-                cand_strings_threshold_evaluation[cand_strings_threshold][qlength][1] += my_filter_time
-                cand_strings_threshold_evaluation[cand_strings_threshold][qlength][2] += position_filter_time
-                cand_strings_threshold_evaluation[cand_strings_threshold][qlength][3] += no_filter_time
-            except KeyError:
-                cand_strings_threshold_evaluation[cand_strings_threshold][qlength] = [1, my_filter_time, position_filter_time, no_filter_time]
+                qs_evaluation = find_approximate_string_matches(query_string)
+                if qs_evaluation['initial_candidates_num'] <= CAND_STRINGS_THRESHOLD:
+                    continue
 
-            if DEBUG_MODE:
-                verify_results(query_string, approximate_matches)
+                current_sample += 1
+                evaluation[0] += qs_evaluation['initial_candidates_num']
+                evaluation[1] += qs_evaluation['my_filter_pruned']
+                evaluation[2] += qs_evaluation['position_filter_pruned']
+                evaluation[3] += qs_evaluation['my_filter_total_time']
+                evaluation[4] += qs_evaluation['position_filter_total_time']
+                evaluation[5] += qs_evaluation['my_filter_time']
+                evaluation[6] += qs_evaluation['position_filter_time']
 
-    for cand_strings_threshold, evaluation in cand_strings_threshold_evaluation.iteritems():
-        print '\n\nCANDIDATE STRINGS THRESHOLD: %s\n' % cand_strings_threshold
+                # if DEBUG_MODE:
+                #     verify_results(query_string, qs_evaluation['approximate_matches'])
 
-        for qlength, attr in evaluation.iteritems():
-            print 'Qstring length: %s - Count: %s - Average time with my filter: %s - Average time with pos filter: %s - Average time without filter: %s' % (qlength, attr[0], attr[1]/attr[0], attr[2]/attr[0], attr[3]/attr[0])
+                if current_sample == SAMPLE_SIZE:
+                    out_string = 'CAND_STRINGS_THRESHOLD: %s\n' % CAND_STRINGS_THRESHOLD
+                    out_string += 'Query string length: %s\n' % qlength
+                    out_string += 'Count: %s\n' % SAMPLE_SIZE
+                    out_string += 'Percentage of pruned candidates (my filter): %d%%\n' % (evaluation[1]*100/evaluation[0])
+                    out_string += 'Percentage of pruned candidates (pos filter): %d%%\n' % (evaluation[2]*100/evaluation[0])
+                    avg_total_time_my_filter = evaluation[3]/SAMPLE_SIZE
+                    avg_total_time_pos_filter = evaluation[4]/SAMPLE_SIZE
+                    avg_total_boost = 100 - (100*avg_total_time_my_filter/avg_total_time_pos_filter)
+                    out_string += 'Average total boost (my filter): %d%%\n' % avg_total_boost
+                    avg_time_my_filter = evaluation[5]/SAMPLE_SIZE
+                    avg_time_pos_filter = evaluation[6]/SAMPLE_SIZE
+                    avg_filter_boost = 100 - (100*avg_time_my_filter/avg_time_pos_filter)
+                    out_string += 'Average filter boost (my filter): %d%%\n' % avg_filter_boost
+                    out_string += '\n\n\n'
+
+                    with open('output.txt', 'a') as outf:
+                        outf.write(out_string)
+
+                    break
+
 
 # **********   EVALUATION   ********** #
