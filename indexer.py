@@ -7,33 +7,19 @@
 
 ''' Indexing the source strings '''
 
-from config import QGRAM_LENGTH, VERBOSITY, ED_THRESHOLD
+from config import QGRAM_LENGTH, VERBOSITY
 
 from Queue import Queue
 from threading import Thread
 
 from db_api import get_all_strings, set_dense_index, set_inverted_index
-from miscutils import get_string_elements, get_qgrams_from_string, \
-                      get_pos_qgrams_from_string
+from miscutils import get_string_elements, get_pos_qgrams_from_string, \
+                      get_qgrams_from_string
 
 
 
 def create_indexes():
-    strings = [string for string in get_all_strings() \
-                                         if len(string) > QGRAM_LENGTH + 1 and \
-                                            string.find('.') == -1 and \
-                                            string.find('$') == -1]
-    clean_strings = list()
-    valid_lengths = range(6-ED_THRESHOLD, 12+ED_THRESHOLD)
-
-    for string in strings:
-        if len(string) not in valid_lengths:
-            continue
-        if string[-1] == ',':
-            string = string[:-1]
-        clean_strings.append(string)
-
-    strings = clean_strings
+    strings = get_all_strings()
 
     if not strings:
         raise Exception('No strings to index')

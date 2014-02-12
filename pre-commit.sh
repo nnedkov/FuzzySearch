@@ -12,7 +12,7 @@
 declare -a FLAGS=(
 1 # (1) show options
 0 # (2) delete trailing whitespaces from modified files
-0 # (3) plot graphs
+0 # (3) plot the graphs
 0 # (4) run pychecker on modified files
 
 ### WHEN ADDING NEW FUNCTIONALITY TOUCH HERE ###
@@ -56,7 +56,7 @@ function show_options() {
 	print "blue" "\n*** Showing options ***"
 	print "(1) show options\n"
 	print "(2) delete trailing whitespaces from modified files\n"
-	print "(3) plot graphs\n"
+	print "(3) plot the graphs\n"
 	print "(4) run pychecker on modified files\n"
 
 	### WHEN ADDING NEW FUNCTIONALITY TOUCH HERE ###
@@ -89,61 +89,64 @@ function check_modified_files() {
 }
 
 ######################################################################################################
-# run pychecker on modified files
+# plot the graphs
 
 function plot_graphs() {
 	print "blue" "\n*** Starting to plot graphs ***"
-	plotdata=length_clusters
-	print "dark_green" "\nPlotting graph: plots/$plotdata.png"
-	gnuplot <<- EOF
-		set terminal png enhanced \
-			font "/Library/Fonts/Verdana.ttf" 18  \
-			size 2*350, 2*250
-		set output "plots/$plotdata.png"
-		set title "Length clusters of the string collection"
-		set xlabel "Length clusters"
-		set ylabel "Cluster size"
-		set style fill solid 0.8 border -1
-		set boxwidth 0.5 relative
-		plot "plots/input/$plotdata.txt" using 1:2 title "" with boxes lc rgb "red"
-		quit
-	EOF
-
-	declare -a THRESHOLDS=("5" "15" "25" "35" "45" "55")
-	for threshold in ${THRESHOLDS[@]}; do
-		plotdata="pruning_capacity_"
-		print "dark_green" "Plotting graph: plots/$plotdata$threshold.png"
-		gnuplot <<- EOF
-			set terminal png enhanced \
-				font "/Library/Fonts/Verdana.ttf" 18  \
-				size 2*350, 2*250
-			set output "plots/$plotdata$threshold.png"
-			set xlabel "Query string length"
-			set ylabel "Average pruning capacity"
-			set format y '%2.0f%%'
-			set yrange [60:100]
-			plot "plots/input/$plotdata$threshold.txt" using 1:3:xtic(2) title "char-map filter" with linespoints, \
-			     "plots/input/$plotdata$threshold.txt" using 1:4:xtic(2) title "position filter" with linespoints
-			quit
-		EOF
-		plotdata="average_boost_"
-		print "dark_green" "Plotting graph: plots/$plotdata$threshold.png"
+	declare -a COLLECTIONS=("english_words" "inspire_authors" "imdb_actors_directors")
+	plotdata="length_frequency"
+	for collection in ${COLLECTIONS[@]}; do
+		print "dark_green" "\nPlotting graph: ./plots/$collection/$plotdata/$plotdata.png"
 		gnuplot <<- EOF
 			set terminal png enhanced \
 				font "/Library/Fonts/Verdana.ttf" 18 \
 				size 2*350, 2*250
-			set output "plots/$plotdata$threshold.png"
-			set xlabel "Query string length"
-			set ylabel "Average performance boost"
-			set format y '%2.0f%%'
-			set yrange [0:100]
+			set output "./plots/$collection/$plotdata/$plotdata.png"
+			set title "Length clusters of the string collection"
+			set xlabel "Length clusters"
+			set ylabel "Cluster size"
 			set style fill solid 0.8 border -1
 			set boxwidth 0.5 relative
-			plot "plots/input/$plotdata$threshold.txt" using 1:2 title "" with boxes lc rgb "blue"
+			plot "./plots/$collection/$plotdata/$plotdata.txt" using 1:2 title "" with boxes lc rgb "red"
 			quit
 		EOF
 	done
-	echo
+
+#	declare -a THRESHOLDS=("5" "15" "25" "35" "45" "55")
+#	for threshold in ${THRESHOLDS[@]}; do
+#		plotdata="pruning_capacity_"
+#		print "dark_green" "Plotting graph: plots/$plotdata$threshold.png"
+#		gnuplot <<- EOF
+#			set terminal png enhanced \
+#				font "/Library/Fonts/Verdana.ttf" 18  \
+#				size 2*350, 2*250
+#			set output "plots/$plotdata$threshold.png"
+#			set xlabel "Query string length"
+#			set ylabel "Average pruning capacity"
+#			set format y '%2.0f%%'
+#			set yrange [60:100]
+#			plot "plots/input/$plotdata$threshold.txt" using 1:3:xtic(2) title "char-map filter" with linespoints, \
+#			     "plots/input/$plotdata$threshold.txt" using 1:4:xtic(2) title "position filter" with linespoints
+#			quit
+#		EOF
+#		plotdata="average_boost_"
+#		print "dark_green" "Plotting graph: plots/$plotdata$threshold.png"
+#		gnuplot <<- EOF
+#			set terminal png enhanced \
+#				font "/Library/Fonts/Verdana.ttf" 18 \
+#				size 2*350, 2*250
+#			set output "plots/$plotdata$threshold.png"
+#			set xlabel "Query string length"
+#			set ylabel "Average performance boost"
+#			set format y '%2.0f%%'
+#			set yrange [0:100]
+#			set style fill solid 0.8 border -1
+#			set boxwidth 0.5 relative
+#			plot "plots/input/$plotdata$threshold.txt" using 1:2 title "" with boxes lc rgb "blue"
+#			quit
+#		EOF
+#	done
+#	echo
 }
 
 ######################################################################################################

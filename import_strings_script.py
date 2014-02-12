@@ -12,10 +12,7 @@ from db_api import set_strings
 
 
 def get_strings_from_ext_source():
-    file_name = './vocab.nytimes.txt'
-    strings = [string.rstrip('\n') for string in open(file_name, 'r')]
-
-    return strings
+    raise NotImplementedError
 
 
 if __name__ == '__main__':
