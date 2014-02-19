@@ -7,7 +7,7 @@
 
 ''' Miscellaneous utilities '''
 
-from config import ED_THRESHOLD
+#from query import ED_THRESHOLD
 
 from itertools import groupby
 from time import time
@@ -46,7 +46,7 @@ def get_string_elements(string):
     return elements
 
 
-def ed_property_is_satisfied(qelements, elements, have_same_length):
+def ed_property_is_satisfied(qelements, elements, have_same_length, ED_THRESHOLD):
     S = R = 0
 
     for char, qoccurences in qelements.iteritems():

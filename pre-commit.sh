@@ -94,59 +94,68 @@ function check_modified_files() {
 function plot_graphs() {
 	print "blue" "\n*** Starting to plot graphs ***"
 	declare -a COLLECTIONS=("english_words" "inspire_authors" "imdb_actors_directors")
-	plotdata="length_frequency"
 	for collection in ${COLLECTIONS[@]}; do
+		slash="_"
+		plotdata="average_pruning_capacity"
 		print "dark_green" "\nPlotting graph: ./plots/$collection/$plotdata/$plotdata.png"
 		gnuplot <<- EOF
 			set terminal png enhanced \
-				font "/Library/Fonts/Verdana.ttf" 18 \
-				size 2*350, 2*250
-			set output "./plots/$collection/$plotdata/$plotdata.png"
-			set title "Length clusters of the string collection"
-			set xlabel "Length clusters"
-			set ylabel "Cluster size"
-			set style fill solid 0.8 border -1
-			set boxwidth 0.5 relative
-			plot "./plots/$collection/$plotdata/$plotdata.txt" using 1:2 title "" with boxes lc rgb "red"
+                            font "/Library/Fonts/Verdana.ttf" 18 \
+                            size 2*350, 2*250
+			set key above
+			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.png"
+			set xlabel "ED threshold"
+			set ylabel "Average pruning capacity"
+			set format y '%2.0f%%'
+			set xrange [0:4]
+			set yrange [0:100]
+			plot "./plots/$collection/$plotdata/$plotdata.txt" using 1:2:xtic(1) title "char-map filter" with linespoints lc rgb "red", \
+			     "./plots/$collection/$plotdata/$plotdata.txt" using 1:3:xtic(1) title "position filter" with linespoints lc rgb "green"
 			quit
 		EOF
+		cp ./plots/$collection/$plotdata/$collection$slash$plotdata.png /home/nedko/Repositories/thesis.git/plots
+		plotdata="average_filter_performance_boost"
+		print "dark_green" "Plotting graph: ./plots/$collection/$plotdata/$plotdata.png"
+		gnuplot <<- EOF
+			set terminal png enhanced \
+                            font "/Library/Fonts/Verdana.ttf" 18 \
+                            size 2*350, 2*250
+			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.png"
+			set xlabel "ED threshold"
+			set ylabel "Average filter speed-up"
+			set format y '%2.0f%%'
+			set yrange [0:100]
+			set xtics ("" 0, "1" 1, "2" 2, "3" 3, "" 4)
+			set style fill solid 0.8 border -1
+			set boxwidth 0.5 relative
+			plot "./plots/$collection/$plotdata/$plotdata.txt" using 1:2 title "" with boxes lc rgb "royalblue"
+			quit
+		EOF
+		cp ./plots/$collection/$plotdata/$collection$slash$plotdata.png /home/nedko/Repositories/thesis.git/plots
+		plotdata="average_overall_performance_boost"
+		print "dark_green" "Plotting graph: ./plots/$collection/$plotdata/$plotdata.png"
+		gnuplot <<- EOF
+			set terminal png enhanced \
+                            font "/Library/Fonts/Verdana.ttf" 18 \
+                            size 2*350, 2*250
+			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.png"
+			set xlabel "ED threshold"
+			set ylabel "Average overall speed-up"
+			set format y '%2.0f%%'
+			set yrange [0:100]
+			set xtics ("" 0, "1" 1, "2" 2, "3" 3, "" 4)
+			set style fill solid 0.8 border -1
+			set boxwidth 0.5 relative
+			plot "./plots/$collection/$plotdata/$plotdata.txt" using 1:2 title "" with boxes lc rgb "orange"
+			quit
+		EOF
+		cp ./plots/$collection/$plotdata/$collection$slash$plotdata.png /home/nedko/Repositories/thesis.git/plots
 	done
+	echo
 
-#	declare -a THRESHOLDS=("5" "15" "25" "35" "45" "55")
-#	for threshold in ${THRESHOLDS[@]}; do
-#		plotdata="pruning_capacity_"
-#		print "dark_green" "Plotting graph: plots/$plotdata$threshold.png"
-#		gnuplot <<- EOF
-#			set terminal png enhanced \
-#				font "/Library/Fonts/Verdana.ttf" 18  \
-#				size 2*350, 2*250
-#			set output "plots/$plotdata$threshold.png"
-#			set xlabel "Query string length"
-#			set ylabel "Average pruning capacity"
-#			set format y '%2.0f%%'
-#			set yrange [60:100]
-#			plot "plots/input/$plotdata$threshold.txt" using 1:3:xtic(2) title "char-map filter" with linespoints, \
-#			     "plots/input/$plotdata$threshold.txt" using 1:4:xtic(2) title "position filter" with linespoints
-#			quit
-#		EOF
-#		plotdata="average_boost_"
-#		print "dark_green" "Plotting graph: plots/$plotdata$threshold.png"
-#		gnuplot <<- EOF
-#			set terminal png enhanced \
-#				font "/Library/Fonts/Verdana.ttf" 18 \
-#				size 2*350, 2*250
-#			set output "plots/$plotdata$threshold.png"
-#			set xlabel "Query string length"
-#			set ylabel "Average performance boost"
-#			set format y '%2.0f%%'
-#			set yrange [0:100]
-#			set style fill solid 0.8 border -1
-#			set boxwidth 0.5 relative
-#			plot "plots/input/$plotdata$threshold.txt" using 1:2 title "" with boxes lc rgb "blue"
-#			quit
-#		EOF
-#	done
-#	echo
+# set terminal postscript
+# set output '| ps2pdf - ./plots/$collection/$plotdata/$collection$slash$plotdata.pdf'
+
 }
 
 ######################################################################################################
