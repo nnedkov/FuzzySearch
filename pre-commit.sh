@@ -99,57 +99,53 @@ function plot_graphs() {
 		plotdata="average_pruning_capacity"
 		print "dark_green" "\nPlotting graph: ./plots/$collection/$plotdata/$plotdata.png"
 		gnuplot <<- EOF
-			set terminal png enhanced \
-                            font "/Library/Fonts/Verdana.ttf" 18 \
-                            size 2*350, 2*250
-			set key above
-			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.png"
+			set terminal pdf monochrome solid font 'Helvetica,16' size 9cm,7cm
+			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.pdf"
 			set xlabel "ED threshold"
-			set ylabel "Average pruning capacity"
-			set format y '%2.0f%%'
+			set ylabel "Average pruning\ncapacity"
 			set xrange [0:4]
-			set yrange [0:100]
-			plot "./plots/$collection/$plotdata/$plotdata.txt" using 1:2:xtic(1) title "char-map filter" with linespoints lc rgb "red", \
-			     "./plots/$collection/$plotdata/$plotdata.txt" using 1:3:xtic(1) title "position filter" with linespoints lc rgb "green"
+			set yrange [0:140]
+			set ytics ("" 0, "20%%" 20, "40%%" 40, "60%%" 60, "80%%" 80, "100%%" 100, "" 120)
+			set pointsize 1.6
+			plot "./plots/$collection/$plotdata/$plotdata.txt" using 1:2:xtic(1) title "char-map filter" with linespoints lt 1 lc rgb "black" pt 5, \
+			     "./plots/$collection/$plotdata/$plotdata.txt" using 1:3:xtic(1) title "position filter" with linespoints lt 2 lc rgb "black" pt 9
 			quit
 		EOF
-		cp ./plots/$collection/$plotdata/$collection$slash$plotdata.png /home/nedko/Repositories/thesis.git/plots
+		echo /home/nedko/Repositories/thesis.git/plots /home/nedko/Repositories/article.git/plots | xargs -n 1 cp ./plots/$collection/$plotdata/$collection$slash$plotdata.pdf
 		plotdata="average_filter_performance_boost"
 		print "dark_green" "Plotting graph: ./plots/$collection/$plotdata/$plotdata.png"
 		gnuplot <<- EOF
-			set terminal png enhanced \
-                            font "/Library/Fonts/Verdana.ttf" 18 \
-                            size 2*350, 2*250
-			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.png"
+			set terminal pdf monochrome solid font 'Helvetica,16' size 9cm,7cm
+			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.pdf"
 			set xlabel "ED threshold"
-			set ylabel "Average filter speed-up"
+			set ylabel "Average filter\nspeed-up"
 			set format y '%2.0f%%'
-			set yrange [0:100]
+			set yrange [0:120]
 			set xtics ("" 0, "1" 1, "2" 2, "3" 3, "" 4)
+			set ytics ("" 0, "20%%" 20, "40%%" 40, "60%%" 60, "80%%" 80, "100%%" 100, "" 120)
 			set style fill solid 0.8 border -1
 			set boxwidth 0.5 relative
 			plot "./plots/$collection/$plotdata/$plotdata.txt" using 1:2 title "" with boxes lc rgb "royalblue"
 			quit
 		EOF
-		cp ./plots/$collection/$plotdata/$collection$slash$plotdata.png /home/nedko/Repositories/thesis.git/plots
+		echo /home/nedko/Repositories/thesis.git/plots /home/nedko/Repositories/article.git/plots | xargs -n 1 cp ./plots/$collection/$plotdata/$collection$slash$plotdata.pdf
 		plotdata="average_overall_performance_boost"
 		print "dark_green" "Plotting graph: ./plots/$collection/$plotdata/$plotdata.png"
 		gnuplot <<- EOF
-			set terminal png enhanced \
-                            font "/Library/Fonts/Verdana.ttf" 18 \
-                            size 2*350, 2*250
-			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.png"
+			set terminal pdf monochrome solid font 'Helvetica,16' size 9cm,7cm
+			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.pdf"
 			set xlabel "ED threshold"
-			set ylabel "Average overall speed-up"
+			set ylabel "Average overall\nspeed-up"
 			set format y '%2.0f%%'
-			set yrange [0:100]
+			set yrange [0:120]
 			set xtics ("" 0, "1" 1, "2" 2, "3" 3, "" 4)
+			set ytics ("" 0, "20%%" 20, "40%%" 40, "60%%" 60, "80%%" 80, "100%%" 100, "" 120)
 			set style fill solid 0.8 border -1
 			set boxwidth 0.5 relative
 			plot "./plots/$collection/$plotdata/$plotdata.txt" using 1:2 title "" with boxes lc rgb "orange"
 			quit
 		EOF
-		cp ./plots/$collection/$plotdata/$collection$slash$plotdata.png /home/nedko/Repositories/thesis.git/plots
+		echo /home/nedko/Repositories/thesis.git/plots /home/nedko/Repositories/article.git/plots | xargs -n 1 cp ./plots/$collection/$plotdata/$collection$slash$plotdata.pdf
 	done
 	echo
 
