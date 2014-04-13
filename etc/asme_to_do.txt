@@ -1,8 +1,0 @@
-* positional qgrams: exactly before removing false positives {qgram: [1, 2 #positions]}. check screenshot
-
-* evaluate in an automatic way
-* store the evaluation results in a collection 
-
-* john -> !j, jo, oh, hn, n%
-* capability of querying strings with length <= QGRAM_LENGTH+1
-* tries to cache previously calculated edit distance

@@ -1,9 +1,9 @@
-##########################################
-#   Filename: import_strings_script.py   #
-#   Nedko Stefanov Nedkov                #
-#   nedko.stefanov.nedkov@gmail.com      #
-#   December 2013                        #
-##########################################
+#######################################
+#   Filename: import_strings.py       #
+#   Nedko Stefanov Nedkov             #
+#   nedko.stefanov.nedkov@gmail.com   #
+#   December 2013                     #
+#######################################
 
 ''' Import strings from external source '''
 

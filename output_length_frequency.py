@@ -28,7 +28,7 @@ if __name__ == '__main__':
                    (db.inspire_authors, 'inspire_authors'), \
                    (db.imdb_actors_directors, 'imdb_actors_directors')]
 
-    for collection, col_name in collections:
+    for collection, coll_name in collections:
         strings = get_strings_from_collection(collection)
         length_frequency = dict()
 
@@ -46,10 +46,10 @@ if __name__ == '__main__':
         for length, count in length_frequency:
             out_string += '%s\t%s\n' % (length, count)
 
-        out_file = './plots/%s/length_frequency/length_frequency.txt' % col_name
-        with open(out_file, 'w') as outf:
-            outf.write(out_string)
+        out_file = './plots/%s/length_frequency/length_frequency.txt' % coll_name
+        with open(out_file, 'w') as fp:
+            fp.write(out_string)
 
-        print '\nCollection: %s, size: %s' % (col_name, len(strings))
+        print '\nCollection: %s, size: %s' % (coll_name, len(strings))
         for length, count in length_frequency:
             print 'Length: %s, count: %s' % (length, count)

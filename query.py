@@ -12,14 +12,14 @@ from config import QGRAM_LENGTH, ED_THRESHOLD, DEBUG_MODE
 from time import time
 from itertools import groupby
 from Levenshtein import distance
-from sys import argv
 
 from db_api import asme_is_in_operation, get_string_attrs_by_ids, \
-                   get_inverted_lists, get_strings_by_lengths, \
-                   get_all_strings
+                   get_inverted_lists, get_strings_by_lengths
 from miscutils import get_qgrams_from_string, get_string_elements, \
                       ed_property_is_satisfied, get_pos_qgrams_from_string, \
                       strings_are_within_distance_K
+
+CAND_STRINGS_THRESHOLD = 50
 
 
 
@@ -52,7 +52,8 @@ def find_approximate_string_matches(qstring):
     evaluation['my_filter_time'] = filter_time - start_time
     evaluation['my_filter_and_rfp_time'] = end_time - start_time
     evaluation['my_filter_pruned'] = len(candidate_strings) - len(filtered_candidate_strings)
-#    verify_results(qstring, matching_strings1)
+    if DEBUG_MODE:
+        verify_results(qstring, matching_strings1)
 
     start_time = int(round(time() * 1000000))
     filtered_candidate_strings = position_filter(qstring, candidate_strings, candidate_string_attrs)
@@ -62,12 +63,8 @@ def find_approximate_string_matches(qstring):
     evaluation['position_filter_time'] = filter_time - start_time
     evaluation['position_filter_and_rfp_time'] = end_time - start_time
     evaluation['position_filter_pruned'] = len(candidate_strings) - len(filtered_candidate_strings)
-#    verify_results(qstring, matching_strings2)
-
-#    start_time = int(round(time() * 1000000))
-#    matching_strings3 = remove_false_positives(qstring, candidate_strings)
-#    end_time = int(round(time() * 1000000))
-#    evaluation['rfp_time'] = end_time - start_time
+    if DEBUG_MODE:
+        verify_results(qstring, matching_strings2)
 
     assert matching_strings1 == matching_strings2, qstring
 
@@ -123,9 +120,6 @@ def solve_T_occurence_problem(qlength, length, qgrams):
     return passing_string_ids, end_time - start_time
 
 
-CAND_STRINGS_THRESHOLD = 50
-
-
 def get_min_matching_qgram_num(query_string=None, qlength=None, qgrams=None):
     if qlength is None:
         qlength = len(query_string)
@@ -141,64 +135,58 @@ def get_min_matching_qgram_num(query_string=None, qlength=None, qgrams=None):
 
 
 def my_filter(qstring, candidate_strings, candidate_string_attrs):
-    filtered_candidate_strings = candidate_strings
+    qelements = get_string_elements(qstring)
+    qlength = len(qstring)
+    filtered_candidate_strings = list()
 
-    if len(candidate_strings) > CAND_STRINGS_THRESHOLD:
-        qelements = get_string_elements(qstring)
-        qlength = len(qstring)
-        filtered_candidate_strings = list()
+    for string in candidate_strings:
+        elements, length, _ = candidate_string_attrs[string]
+        if ed_property_is_satisfied(qelements, elements, qlength == length, ED_THRESHOLD):
+            filtered_candidate_strings.append(string)
 
-        for string in candidate_strings:
-            elements, length, _ = candidate_string_attrs[string]
-            if ed_property_is_satisfied(qelements, elements, qlength == length, ED_THRESHOLD):
-                filtered_candidate_strings.append(string)
-
-        print '(my_filter) before: %s, after: %s' % (len(candidate_strings), len(filtered_candidate_strings))
+    print '(my_filter) before: %s, after: %s' % (len(candidate_strings), len(filtered_candidate_strings))
 
     return filtered_candidate_strings
 
 
 def position_filter(qstring, candidate_strings, candidate_string_attrs):
-    filtered_candidate_strings = candidate_strings
+    query_pos_qgrams = get_pos_qgrams_from_string(qstring, QGRAM_LENGTH)
+    filtered_candidate_strings = list()
 
-    if len(candidate_strings) > CAND_STRINGS_THRESHOLD:
-        query_pos_qgrams = get_pos_qgrams_from_string(qstring, QGRAM_LENGTH)
-        filtered_candidate_strings = list()
+    for string in candidate_strings:
+        _, _, pos_qgrams = candidate_string_attrs[string]
+        pos_qgram_matches_numb = 0
+        T = max(len(qstring), len(string)) - QGRAM_LENGTH*ED_THRESHOLD - 1
+        will_be_pruned = True
 
-        for string in candidate_strings:
-            _, _, pos_qgrams = candidate_string_attrs[string]
-            pos_qgram_matches_numb = 0
-            T = max(len(qstring), len(string)) - QGRAM_LENGTH*ED_THRESHOLD - 1
-            will_be_pruned = True
+        for qgram, query_positions in query_pos_qgrams.iteritems():
+            assert query_positions == sorted(query_positions)
+            try:
+                positions = list(pos_qgrams[qgram])
+            except KeyError:
+                continue
 
-            for qgram, query_positions in query_pos_qgrams.iteritems():
-                assert query_positions == sorted(query_positions)
-                try:
-                    positions = list(pos_qgrams[qgram])
-                except KeyError:
-                    continue
+            assert positions == sorted(positions)
 
-                assert positions == sorted(positions)
+            for qpos in query_positions:
 
-                for qpos in query_positions:
-
-                    for pos in positions:
-                        if abs(qpos-pos) <= ED_THRESHOLD:
-                            positions.remove(pos)
-                            pos_qgram_matches_numb += 1
-                            break
-
-                    if pos_qgram_matches_numb == T:
-                        will_be_pruned = False
+                for pos in positions:
+                    if abs(qpos-pos) <= ED_THRESHOLD:
+                        positions.remove(pos)
+                        pos_qgram_matches_numb += 1
                         break
 
-                if not will_be_pruned:
+                if pos_qgram_matches_numb == T:
+                    will_be_pruned = False
                     break
 
             if not will_be_pruned:
-                filtered_candidate_strings.append(string)
+                break
 
-        print '(pos_filter) before: %s, after: %s' % (len(candidate_strings), len(filtered_candidate_strings))
+        if not will_be_pruned:
+            filtered_candidate_strings.append(string)
+
+    print '(pos_filter) before: %s, after: %s' % (len(candidate_strings), len(filtered_candidate_strings))
 
     return filtered_candidate_strings
 
@@ -238,25 +226,17 @@ def verify_results(qstring, approximate_matches):
 
 
 if __name__ == '__main__':
-#    if len(argv) == 1:
-#        strings = get_all_strings()
-#    else:
-#       strings = argv[1:]
-
-#    strings = argv[1:]
-#    for string in strings:
-#        qs_evaluation = find_approximate_string_matches(string)
-#    assert False
 
 # **********   EVALUATION   ********** #
 
-    for ED_THRESHOLD in [1]:
-        qlens = [14, 13, 15]
-        DESIRED_SAMPLE_SIZE = 20
+    for ED_THRESHOLD in [4, 5]:
+        QLENS = [8, 9]
+        DESIRED_SAMPLE_SIZE = 500
+
         current_overall_sample_item = 0
         overall_evaluation = [0] * 8
 
-        for query_string_len in qlens:
+        for query_string_len in QLENS:
             strings = get_strings_by_lengths([query_string_len])
             current_sample_item = 0
             qlen_evaluation = [0] * 8
@@ -272,16 +252,16 @@ if __name__ == '__main__':
                     print '%s/%s: %s (skip because T is 0)' % (current_sample_item, DESIRED_SAMPLE_SIZE, query_string)
                     continue
 
-    #            if query_string_len <= QGRAM_LENGTH + 1:
-    #                print '%s/%s: %s (skip because of its small length)' % (current_sample_item, DESIRED_SAMPLE_SIZE, query_string)
-    #                continue
+#                if query_string_len <= QGRAM_LENGTH + 1:
+#                    print '%s/%s: %s (skip because of its small length)' % (current_sample_item, DESIRED_SAMPLE_SIZE, query_string)
+#                    continue
 
                 print '%s/%s: %s' % (current_sample_item, DESIRED_SAMPLE_SIZE, query_string)
 
-                qs_evaluation = find_approximate_string_matches(query_string)
-
-    #            if DEBUG_MODE:
-    #                verify_results(query_string, qs_evaluation['approximate_matches'])
+                try:
+                    qs_evaluation = find_approximate_string_matches(query_string)
+                except:
+                    continue
 
                 if qs_evaluation['initial_candidates_num'] >= CAND_STRINGS_THRESHOLD:
                     print 'Initial filters time: %s, my filter time: %s, pos filter: %s' % (qs_evaluation['initial_filters_time'], \
@@ -307,47 +287,49 @@ if __name__ == '__main__':
                     overall_evaluation[6] += qs_evaluation['position_filter_and_rfp_time']
                     overall_evaluation[7] += qs_evaluation['initial_filters_time']
 
-                    if current_sample_item == DESIRED_SAMPLE_SIZE:
-                        out_string = 'Sample size: %s\n' % DESIRED_SAMPLE_SIZE
+                    if current_sample_item % 100 == 0:
+                        out_string = 'Sample size: %s\n' % current_sample_item
                         out_string += 'Query string length: %s\n' % query_string_len
                         out_string += 'CAND_STRINGS_THRESHOLD: %s\n' % CAND_STRINGS_THRESHOLD
-                        out_string += 'Average number of candidates: %d\n' % (qlen_evaluation[0]/DESIRED_SAMPLE_SIZE)
+                        out_string += 'Average number of candidates: %d\n' % (qlen_evaluation[0]/current_sample_item)
                         out_string += 'Percentage of pruned candidates (my filter): %d%%\n' % (qlen_evaluation[1]*100/qlen_evaluation[0])
                         out_string += 'Percentage of pruned candidates (pos filter): %d%%\n' % (qlen_evaluation[2]*100/qlen_evaluation[0])
-                        avg_time_my_filter = qlen_evaluation[3]/DESIRED_SAMPLE_SIZE
-                        avg_time_pos_filter = qlen_evaluation[4]/DESIRED_SAMPLE_SIZE
+                        avg_time_my_filter = qlen_evaluation[3]/current_sample_item
+                        avg_time_pos_filter = qlen_evaluation[4]/current_sample_item
                         avg_filter_boost = 100-(100*avg_time_my_filter/avg_time_pos_filter)
                         out_string += 'Average filter boost (my filter): %d%%\n' % avg_filter_boost
-                        avg_total_time_my_filter = (qlen_evaluation[7]+qlen_evaluation[5])/DESIRED_SAMPLE_SIZE
-                        avg_total_time_pos_filter = (qlen_evaluation[7]+qlen_evaluation[6])/DESIRED_SAMPLE_SIZE
+                        avg_total_time_my_filter = (qlen_evaluation[7]+qlen_evaluation[5])/current_sample_item
+                        avg_total_time_pos_filter = (qlen_evaluation[7]+qlen_evaluation[6])/current_sample_item
                         avg_total_boost = 100-(100*avg_total_time_my_filter/avg_total_time_pos_filter)
                         out_string += 'Average total boost (my filter): %d%%\n' % avg_total_boost
                         out_string += '\n\n\n'
 
-                        out_file = './evaluation/output_%s.txt' % ED_THRESHOLD
-                        with open(out_file, 'a') as outf:
-                            outf.write(out_string)
+                        out_file = './evaluation/output_%s_%s.txt' % (ED_THRESHOLD, current_sample_item)
+                        with open(out_file, 'a') as fp:
+                            fp.write(out_string)
 
-                        break
+                        if current_sample_item == DESIRED_SAMPLE_SIZE:
+                            break
 
-        out_string = 'Sample size: %s\n' % current_overall_sample_item
-        out_string += 'Query string lengths: %s\n' % qlens
-        out_string += 'CAND_STRINGS_THRESHOLD: %s\n' % CAND_STRINGS_THRESHOLD
-        out_string += 'Average number of candidates: %d\n' % (overall_evaluation[0]/current_overall_sample_item)
-        out_string += 'Percentage of pruned candidates (my filter): %d%%\n' % (overall_evaluation[1]*100/overall_evaluation[0])
-        out_string += 'Percentage of pruned candidates (pos filter): %d%%\n' % (overall_evaluation[2]*100/overall_evaluation[0])
-        avg_time_my_filter = overall_evaluation[3]/current_overall_sample_item
-        avg_time_pos_filter = overall_evaluation[4]/current_overall_sample_item
-        avg_filter_boost = 100-(100*avg_time_my_filter/avg_time_pos_filter)
-        out_string += 'Average filter boost (my filter): %d%%\n' % avg_filter_boost
-        avg_total_time_my_filter = (overall_evaluation[7]+overall_evaluation[5])/current_overall_sample_item
-        avg_total_time_pos_filter = (overall_evaluation[7]+overall_evaluation[6])/current_overall_sample_item
-        avg_total_boost = 100-(100*avg_total_time_my_filter/avg_total_time_pos_filter)
-        out_string += 'Average total boost (my filter): %d%%\n' % avg_total_boost
-        out_string += '\n\n\n'
+        if current_overall_sample_item != 0:
+            out_string = 'Sample size: %s\n' % current_overall_sample_item
+            out_string += 'Query string lengths: %s\n' % QLENS
+            out_string += 'CAND_STRINGS_THRESHOLD: %s\n' % CAND_STRINGS_THRESHOLD
+            out_string += 'Average number of candidates: %d\n' % (overall_evaluation[0]/current_overall_sample_item)
+            out_string += 'Percentage of pruned candidates (my filter): %d%%\n' % (overall_evaluation[1]*100/overall_evaluation[0])
+            out_string += 'Percentage of pruned candidates (pos filter): %d%%\n' % (overall_evaluation[2]*100/overall_evaluation[0])
+            avg_time_my_filter = overall_evaluation[3]/current_overall_sample_item
+            avg_time_pos_filter = overall_evaluation[4]/current_overall_sample_item
+            avg_filter_boost = 100-(100*avg_time_my_filter/avg_time_pos_filter)
+            out_string += 'Average filter boost (my filter): %d%%\n' % avg_filter_boost
+            avg_total_time_my_filter = (overall_evaluation[7]+overall_evaluation[5])/current_overall_sample_item
+            avg_total_time_pos_filter = (overall_evaluation[7]+overall_evaluation[6])/current_overall_sample_item
+            avg_total_boost = 100-(100*avg_total_time_my_filter/avg_total_time_pos_filter)
+            out_string += 'Average total boost (my filter): %d%%\n' % avg_total_boost
+            out_string += '\n\n\n'
 
-        out_file = './evaluation/overall_output_%s.txt' % ED_THRESHOLD
-        with open(out_file, 'w') as outf:
-            outf.write(out_string)
+            out_file = './evaluation/overall_output_%s.txt' % ED_THRESHOLD
+            with open(out_file, 'w') as fp:
+                fp.write(out_string)
 
 # **********   EVALUATION   ********** #

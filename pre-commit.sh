@@ -97,7 +97,7 @@ function plot_graphs() {
 	for collection in ${COLLECTIONS[@]}; do
 		slash="_"
 		plotdata="average_pruning_capacity"
-		print "dark_green" "\nPlotting graph: ./plots/$collection/$plotdata/$plotdata.png"
+		print "dark_green" "\nPlotting graph: ./plots/$collection/$plotdata/$plotdata.pdf"
 		gnuplot <<- EOF
 			set terminal pdf monochrome solid font 'Helvetica,16' size 9cm,7cm
 			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.pdf"
@@ -113,7 +113,7 @@ function plot_graphs() {
 		EOF
 		echo /home/nedko/Repositories/thesis.git/plots /home/nedko/Repositories/article.git/plots | xargs -n 1 cp ./plots/$collection/$plotdata/$collection$slash$plotdata.pdf
 		plotdata="average_filter_performance_boost"
-		print "dark_green" "Plotting graph: ./plots/$collection/$plotdata/$plotdata.png"
+		print "dark_green" "Plotting graph: ./plots/$collection/$plotdata/$plotdata.pdf"
 		gnuplot <<- EOF
 			set terminal pdf monochrome solid font 'Helvetica,16' size 9cm,7cm
 			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.pdf"
@@ -130,7 +130,7 @@ function plot_graphs() {
 		EOF
 		echo /home/nedko/Repositories/thesis.git/plots /home/nedko/Repositories/article.git/plots | xargs -n 1 cp ./plots/$collection/$plotdata/$collection$slash$plotdata.pdf
 		plotdata="average_overall_performance_boost"
-		print "dark_green" "Plotting graph: ./plots/$collection/$plotdata/$plotdata.png"
+		print "dark_green" "Plotting graph: ./plots/$collection/$plotdata/$plotdata.pdf"
 		gnuplot <<- EOF
 			set terminal pdf monochrome solid font 'Helvetica,16' size 9cm,7cm
 			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.pdf"
@@ -148,10 +148,6 @@ function plot_graphs() {
 		echo /home/nedko/Repositories/thesis.git/plots /home/nedko/Repositories/article.git/plots | xargs -n 1 cp ./plots/$collection/$plotdata/$collection$slash$plotdata.pdf
 	done
 	echo
-
-# set terminal postscript
-# set output '| ps2pdf - ./plots/$collection/$plotdata/$collection$slash$plotdata.pdf'
-
 }
 
 ######################################################################################################
