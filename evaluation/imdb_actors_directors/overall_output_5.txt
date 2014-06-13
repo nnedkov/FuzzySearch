@@ -1,0 +1,11 @@
+Sample size: 1500
+Query string lengths: [13, 14, 15]
+CAND_STRINGS_THRESHOLD: 50
+Average number of candidates: 369620
+Percentage of pruned candidates (my filter): 95%
+Percentage of pruned candidates (pos filter): 75%
+Average filter boost (my filter): 38%
+Average total boost (my filter): 56%
+
+
+
