@@ -80,7 +80,7 @@ function delete_trail_whitespaces_modified_files() {
 
 function check_modified_files() {
 	print "blue" "\n*** Running pychecker on modified files ***"
-	FILES=(`git status | awk '$1 == "modified:" { print head$2 }'`)
+	FILES=(`git status | awk '$1 == "modified:" { print head$2 }' | grep py`)
 	for file in ${FILES[@]}; do
 		print "dark_green" "\nPychecking modified file: $file\n"
 		pychecker $file
@@ -103,9 +103,9 @@ function plot_graphs() {
 			set output "./plots/$collection/$plotdata/$collection$slash$plotdata.pdf"
 			set xlabel "ED threshold"
 			set ylabel "Average pruning\ncapacity"
-			set xrange [0:4]
+			set xrange [0:6]
 			set yrange [0:140]
-			set ytics ("" 0, "20%%" 20, "40%%" 40, "60%%" 60, "80%%" 80, "100%%" 100, "" 120)
+			set ytics ("" 0, "20%%" 20, "40%%" 40, "60%%" 60, "80%%" 80, "100%%" 100, "" 150)
 			set pointsize 1.6
 			plot "./plots/$collection/$plotdata/$plotdata.txt" using 1:2:xtic(1) title "char-map filter" with linespoints lt 1 lc rgb "black" pt 5, \
 			     "./plots/$collection/$plotdata/$plotdata.txt" using 1:3:xtic(1) title "position filter" with linespoints lt 2 lc rgb "black" pt 9
@@ -121,7 +121,7 @@ function plot_graphs() {
 			set ylabel "Average filter\nspeed-up"
 			set format y '%2.0f%%'
 			set yrange [0:120]
-			set xtics ("" 0, "1" 1, "2" 2, "3" 3, "" 4)
+			set xtics ("" 0, "1" 1, "2" 2, "3" 3, "4" 4, "5" 5, "" 6)
 			set ytics ("" 0, "20%%" 20, "40%%" 40, "60%%" 60, "80%%" 80, "100%%" 100, "" 120)
 			set style fill solid 0.8 border -1
 			set boxwidth 0.5 relative
@@ -138,7 +138,7 @@ function plot_graphs() {
 			set ylabel "Average overall\nspeed-up"
 			set format y '%2.0f%%'
 			set yrange [0:120]
-			set xtics ("" 0, "1" 1, "2" 2, "3" 3, "" 4)
+			set xtics ("" 0, "1" 1, "2" 2, "3" 3, "4" 4, "5" 5, "" 6)
 			set ytics ("" 0, "20%%" 20, "40%%" 40, "60%%" 60, "80%%" 80, "100%%" 100, "" 120)
 			set style fill solid 0.8 border -1
 			set boxwidth 0.5 relative
